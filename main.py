@@ -1,12 +1,14 @@
+import os
 from datetime import timedelta
 from datetime import datetime
 import telebot
+
 import sqlite3
 from telebot import types
 from dadata import Dadata
 
-DADATA_KEY = "51d8dd6354225a53bfd3dd4c64420a0b3b2d0d04"
-TELEGRAM_TOKEN = "7649379379:AAEyUHF6Jk6FKifAUSCl9R1SqP7wLT_TAZI"
+DADATA_KEY = os.environ["Dadata_API_Token"]
+TELEGRAM_TOKEN = os.environ["DVM_BOT"]
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 dadata = Dadata(DADATA_KEY)
