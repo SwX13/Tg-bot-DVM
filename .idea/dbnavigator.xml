@@ -24,7 +24,7 @@
   </component>
   <component name="DBNavigator.Project.DatabaseConsoleManager">
     <connection id="24d5ae8a-ee95-4647-b346-9f05b8d451a8">
-      <console name="Connection" type="STANDARD" schema="main" session="Main"><![CDATA[update users set "subscribeData" = 1753957650.42246 where id=615158032]]></console>
+      <console name="Connection" type="STANDARD" schema="main" session="Main"><![CDATA[update users set "subscribeData" = "2025-06-02 13:54:46.699138" where id=615158032]]></console>
     </connection>
   </component>
   <component name="DBNavigator.Project.DatabaseEditorStateManager">
@@ -86,7 +86,7 @@
           <session-user value="" />
         </database>
         <properties>
-          <auto-commit value="false" />
+          <auto-commit value="true" />
         </properties>
         <ssh-settings>
           <active value="false" />

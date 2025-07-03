@@ -1,6 +1,7 @@
 import os
 from datetime import timedelta
 from datetime import datetime
+
 import telebot
 
 import sqlite3
@@ -24,9 +25,16 @@ btn_What_Smeta = types.InlineKeyboardButton("❓ Зачем производит
 
 btn_tech_support = types.InlineKeyboardButton("🔧 It сопровождение", callback_data="techsupport")
 
+btn_Get_Subscribe_Inline = types.InlineKeyboardButton("💳 Оформить подписку", callback_data="getsubscribe")
 # главное меню
 btn_main_menu = types.KeyboardButton("🏠 Главное меню")
 btn_Get_Subscribe = types.KeyboardButton("💳 Оформить подписку")
+
+markup_clear_start = types.InlineKeyboardMarkup()
+markup_clear_start.row(btn_What_Check_inn)
+markup_clear_start.row(btn_What_Smeta)
+markup_clear_start.row(btn_Get_Subscribe_Inline)
+markup_clear_start.row(btn_tech_support)
 
 markup_clear = types.InlineKeyboardMarkup()
 markup_clear.row(btn_What_Check_inn)
@@ -49,7 +57,6 @@ markup_main_menu.add(btn_main_menu, btn_Get_Subscribe)
 @bot.message_handler(commands=['start'])
 def start(message):
     create_database()
-
     bot.send_message(message.chat.id, "Приветствую!", reply_markup=markup_main_menu)
     print_select_options(message)
 
@@ -57,37 +64,42 @@ def start(message):
 @bot.message_handler(content_types=["text"])
 def check_text(message):
     if message.text.lower().strip() == "🏠 главное меню":
+        check_subscribe_period(message.from_user.id, message.chat.id)
         print_select_options(message)
     elif message.text.lower().strip() == "id":
         bot.send_message(message.chat.id, f"{message.from_user.id}")
     elif message.text.lower().strip() == "💳 оформить подписку":
-        subscribe(message)
+        subscribe(message.from_user.id, message.chat.id)
 
 
 @bot.callback_query_handler(func=lambda callback: True)
 def check_commands(callback):
-    if callback.data == "whatinn":
+    bot.delete_message(callback.message.chat.id, callback.message.message_id)
+    if callback.data == "getsubscribe":
+        subscribe(callback.from_user.id, callback.message.chat.id)
+
+    elif callback.data == "whatinn":
         bot.send_message(callback.message.chat.id, "❗️<u>Почему важно проверять контрагентов?</u>❗️\n\n"
                                                    "1️⃣ <b>Безопасность бизнеса</b>\n"
                                                    "Банки и Центральный Банк РФ тщательно анализируют деятельность компаний. Если ваш контрагент "
                                                    "вызывает сомнения у регуляторов, это может привести к дополнительным проверкам и блокировкам операций.\n\n"
-    
+
                                                    "2️⃣ <b>Снижение бюрократической нагрузки</b>\n"
                                                    "Проверенные контрагенты уменьшают количество запросов от банка, экономя ваше время и ресурсы на сбор документов.\n\n"
-    
+
                                                    "3️⃣ <b>Защита от репутационных и финансовых рисков</b>\n"
                                                    "Работа с ненадёжными партнёрами может привести к включению вашей компании в «чёрные списки» по 115-ФЗ, что грозит:\n"
                                                    "\t- Блокировкой счетов\n"
                                                    "\t- Отказом в обслуживании банками\n"
                                                    "\t- Проблемами с налоговой\n\n"
-    
+
                                                    "4️⃣ <b>Предотвращение мошенничества</b>\n"
                                                    "Проверка контрагентов помогает выявить фирмы-однодневки, компании с признаками нелегальной деятельности или финансовой нестабильности.)",
                          parse_mode="html")
 
     elif callback.data == "whatsmeta":
         bot.send_message(callback.message.chat.id, """❗️<u>Зачем производить расчет сметы?</u> ❗️
-        
+
 1️⃣ <b>Финансовая стабильность</b>
 Точный расчет сметы позволяет избежать перерасходов и потерей бюджета. Это важно для поддержания финансовой устойчивости проекта и компании в целом.
 
@@ -99,60 +111,56 @@ def check_commands(callback):
 
 4️⃣ <b>Привлечение инвестиций</b>
 Правильно оформленная смета способствует укреплению доверия со стороны инвесторов и банков, что важно для получения финансирования и успешной реализации проектов.""",
-         parse_mode="html")
+                         parse_mode="html")
 
     elif callback.data == "techsupport":
         text = "Вы связались с техподдержкой:"
         with open("./resources/techsupport.jpg", "rb") as photo:
             bot.send_photo(callback.message.chat.id, photo, caption=text)
 
-    elif callback.data == "inn":
-        text = "🔍 Введите ИНН организации для проверки:"
-        with open("./resources/buisness1.png", "rb") as photo:
-            bot.send_photo(callback.message.chat.id, photo, caption=text)
-            bot.register_next_step_handler(callback.message, check_by_inn)
+    elif check_subscribe_period(callback.from_user.id, callback.message.chat.id):
+        if callback.data == "inn":
+            text = "🔍 Введите ИНН организации для проверки:"
+            with open("./resources/buisness1.png", "rb") as photo:
+                bot.send_photo(callback.message.chat.id, photo, caption=text)
+                bot.register_next_step_handler(callback.message, check_by_inn)
 
-    elif callback.data == "smeta":
-        text = "Нажата расчет сметы:"
-        with open("./resources/blueprint.jpg", "rb") as photo:
-            bot.send_photo(callback.message.chat.id, photo, caption=text)
+        elif callback.data == "smeta":
+            text = "Расчет сметы:"
+            with open("./resources/blueprint.jpg", "rb") as photo:
+                bot.send_photo(callback.message.chat.id, photo, caption=text)
 
-    elif callback.data == "nalcon":
-        bot.send_message(callback.message.chat.id, "Налоговый консалтинг")
+        elif callback.data == "nalcon":
+            text = "Налоговый консалтинг:"
+            with open("./resources/nalcom.jpg", "rb") as photo:
+                bot.send_photo(callback.message.chat.id, photo, caption=text)
 
-    elif callback.data == "dolosm":
-        bot.send_message(callback.message.chat.id, "Должная осмотрительность")
+        elif callback.data == "dolosm":
+            text = "Должная осмотрительность:"
+            with open("./resources/doljosm.jpg", "rb") as photo:
+                bot.send_photo(callback.message.chat.id, photo, caption=text)
 
 
 def print_select_options(message):
-    con = sqlite3.connect("UsersDB.sqlite")
-    cur = con.cursor()
+    with sqlite3.connect("UsersDB.sqlite") as con:
+        cur = con.cursor()
+        cur.execute("Select * from users where id = %i" % message.from_user.id)
+        users = cur.fetchall()
 
-    # check_subscribe_period(message)
+        if len(users) > 0:
+            for user in users:
+                subscribe = user[1]
+                datetime_purcahase = datetime.strptime(user[2], "%Y-%m-%d %H:%M:%S.%f")
+                end_datetime = datetime_purcahase + timedelta(30)
 
-    cur.execute("Select * from users where id = %i" % message.from_user.id)
-    users = cur.fetchall()
-
-    if len(users) > 0:
-        for user in users:
-            subscribe = user[1]
-            datetime_purcahaise = datetime.fromtimestamp(user[2])
-            end_datetime = datetime_purcahaise + timedelta(30)
-
-            print(
-                f"user id: {user[0]}\t subscribe: {user[1]}\t purchaise date: {datetime_purcahaise}\t end date: {end_datetime.timestamp()}")
-            if subscribe == True and datetime_purcahaise < end_datetime:
-                send_message(message, markup_subscribe)
-                # bot.send_message(message.chat.id, "Выберите опцию:", reply_markup=markup_subscribe)
-            else:
-                send_message(message, markup_clear)
-                # bot.send_message(message.chat.id, "Выберите опцию:", reply_markup=markup_clear)
-    else:
-        send_message(message, markup_clear)
-        # bot.send_message(message.chat.id, "Выберите опцию:", reply_markup=markup_clear)
-
-    cur.close()
-    con.close()
+                print(
+                    f"user id: {user[0]}\t subscribe: {user[1]}\t purchaise date: {datetime_purcahase}\t end date: {end_datetime}\t now:{datetime.today()}")
+                if subscribe == True and datetime_purcahase < end_datetime:
+                    send_message(message, markup_subscribe)
+                else:
+                    send_message(message, markup_clear)
+        else:
+            send_message(message, markup_clear_start)
 
 
 def send_message(message, reply_markup):
@@ -160,45 +168,59 @@ def send_message(message, reply_markup):
     with open("./resources/options.jpg", "rb") as photo:
         bot.send_photo(message.chat.id, photo, caption=text, reply_markup=reply_markup)
 
-def check_subscribe_period(message):
+
+def check_subscribe_period(user_id, chat_id):
     with sqlite3.connect("UsersDB.sqlite") as con:
         cur = con.cursor()
-        cur.execute("SELECT * FROM users WHERE id = ?", (message.from_user.id,))
+        cur.execute("SELECT * FROM users WHERE id = ?", (user_id,))
         users = cur.fetchall()
 
         if len(users) > 0:
             for user in users:
-                if datetime.fromtimestamp(user[2]) < datetime.fromtimestamp(user[2]) + timedelta(30):
-                    cur.execute("Update users set subscribe = ? where id =?", (False, message.from_user.id))
-                    bot.send_message(message.chat.id, f"У вас закончилась подписка. Пожалуйста оформите ее снова для продолжения использования бота")
+                expire_date = datetime.strptime(user[2], "%Y-%m-%d %H:%M:%S.%f")
+                if datetime.today() > expire_date + timedelta(30):
+                    markup = types.InlineKeyboardMarkup()
+                    markup.add(btn_Get_Subscribe_Inline)
+                    cur.execute("Update users set subscribe = ? where id =?", (False, user_id))
+                    bot.send_message(chat_id,
+                                     f"💔 У вас закончилась подписка.\n😢 Пожалуйста, оформите её снова для продолжения использования бота!",
+                                     reply_markup=markup)
+                    return False
+                else:
+                    return True
+        else:
+            return True
 
-def subscribe(message):
+
+def subscribe(user_id, chat_id):
     with sqlite3.connect("UsersDB.sqlite") as con:
         cur = con.cursor()
 
-        cur.execute("SELECT * FROM users WHERE id = ?", (message.from_user.id,))
+        cur.execute("SELECT * FROM users WHERE id = ?", (user_id,))
         users = cur.fetchall()
 
         if len(users) > 0:
             for user in users:
                 if user[1] == True:
-                    bot.send_message(message.chat.id,
-                                     f"✅ Вы уже подписаны!\nПодписка активна до {datetime.fromtimestamp(user[2]) + timedelta(30)}")
-                    print(f"User: {message.from_user.id} УЖЕ ПОДПИСАН")
+                    bot.send_message(chat_id,
+                                     f"✅ Вы уже подписаны!\nПодписка активна до {datetime.strptime(user[2], "%Y-%m-%d %H:%M:%S.%f") + timedelta(30)}")
+                    print(f"User: {user_id} УЖЕ ПОДПИСАН")
                 else:
-                    cur.execute("Update users set subscribe = ? where id =?", (True, message.from_user.id))
-                    bot.send_message(message.chat.id,
-                                     f"🔔 Вы успешно возобновили подписку на 1 месяц!\nПодписка активна до {datetime.fromtimestamp(user[2]) + timedelta(30)}")
-                    print(f"User: {message.from_user.id} возобновил подписку")
+                    cur.execute("Update users set subscribe = ?, subscribeData = ? where id =?",
+                                (True, datetime.today(), user_id))
+                    bot.send_message(chat_id,
+                                     f"🔔 Вы успешно возобновили подписку на 1 месяц!\nПодписка активна до {datetime.strptime(user[2], "%Y-%m-%d %H:%M:%S.%f") + timedelta(30)}")
+                    print(f"User: {user_id} возобновил подписку")
         else:
             cur.execute("Insert into users(id, subscribe,subscribeData) values(?,?,?)",
-                        (message.from_user.id, True, datetime.now().timestamp()))
-            bot.send_message(message.chat.id, "🎉 Вы успешно оформили подписку на 1 месяц!")
-            print(f"User: {message.from_user.id} купил подписку")
+                        (user_id, True, datetime.today()))
+            bot.send_message(chat_id, "🎉 Вы успешно оформили подписку на 1 месяц!")
+            print(f"User: {user_id} купил подписку")
 
 
 def check_by_inn(message):
     print(f"User id: {message.from_user.id}\nUser query: {message.text}")
+    company = None
     inn = message.text.strip()
     if inn.isupper() or inn.islower() or " " in inn:
         bot.send_message(message.chat.id, f"❌ Некорректный ввод ❌")
@@ -231,6 +253,8 @@ def check_by_inn(message):
         except Exception as e:
             bot.reply_to(message, f"Ошибка: {e}")
     print(f"{message.text.strip()}{inn.isupper()} {inn.islower()} {" " in inn}")
+
+    print(company)
 
 
 def create_database():
