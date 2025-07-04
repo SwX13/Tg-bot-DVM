@@ -25,7 +25,7 @@ btn_What_Smeta = types.InlineKeyboardButton("❓ Зачем производит
 
 btn_tech_support = types.InlineKeyboardButton("🔧 It сопровождение", callback_data="techsupport")
 
-btn_Get_Subscribe_Inline = types.InlineKeyboardButton("💳 Оформить подписку", callback_data="getsubscribe")
+btn_Get_Subscribe_Inline = types.InlineKeyboardButton("💳 Оформить подписку", callback_data="getsubscription")
 # главное меню
 btn_main_menu = types.KeyboardButton("🏠 Главное меню")
 btn_Get_Subscribe = types.KeyboardButton("💳 Оформить подписку")
@@ -64,19 +64,19 @@ def start(message):
 @bot.message_handler(content_types=["text"])
 def check_text(message):
     if message.text.lower().strip() == "🏠 главное меню":
-        check_subscribe_period(message.from_user.id, message.chat.id)
+        check_subscription_period(message.from_user.id, message.chat.id)
         print_select_options(message)
     elif message.text.lower().strip() == "id":
         bot.send_message(message.chat.id, f"{message.from_user.id}")
     elif message.text.lower().strip() == "💳 оформить подписку":
-        subscribe(message.from_user.id, message.chat.id)
+        subscription(message.from_user.id, message.chat.id)
 
 
 @bot.callback_query_handler(func=lambda callback: True)
 def check_commands(callback):
     bot.delete_message(callback.message.chat.id, callback.message.message_id)
-    if callback.data == "getsubscribe":
-        subscribe(callback.from_user.id, callback.message.chat.id)
+    if callback.data == "getsubscription":
+        subscription(callback.from_user.id, callback.message.chat.id)
 
     elif callback.data == "whatinn":
         bot.send_message(callback.message.chat.id, "❗️<u>Почему важно проверять контрагентов?</u>❗️\n\n"
@@ -118,7 +118,7 @@ def check_commands(callback):
         with open("./resources/techsupport.jpg", "rb") as photo:
             bot.send_photo(callback.message.chat.id, photo, caption=text)
 
-    elif check_subscribe_period(callback.from_user.id, callback.message.chat.id):
+    elif check_subscription_period(callback.from_user.id, callback.message.chat.id):
         if callback.data == "inn":
             text = "🔍 Введите ИНН организации для проверки:"
             with open("./resources/buisness1.png", "rb") as photo:
@@ -169,7 +169,7 @@ def send_message(message, reply_markup):
         bot.send_photo(message.chat.id, photo, caption=text, reply_markup=reply_markup)
 
 
-def check_subscribe_period(user_id, chat_id):
+def check_subscription_period(user_id, chat_id):
     with sqlite3.connect("UsersDB.sqlite") as con:
         cur = con.cursor()
         cur.execute("SELECT * FROM users WHERE id = ?", (user_id,))
@@ -192,7 +192,7 @@ def check_subscribe_period(user_id, chat_id):
             return True
 
 
-def subscribe(user_id, chat_id):
+def subscription(user_id, chat_id):
     with sqlite3.connect("UsersDB.sqlite") as con:
         cur = con.cursor()
 
